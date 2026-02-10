@@ -1,0 +1,57 @@
+name: Update API Spec
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  update-spec:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # TODO
+
+      - name: Set up Go
+        uses: actions/setup-go@v5 # TODO
+        with:
+          go-version-file: go.mod
+
+      - name: Fetch latest spec
+        run: make fetch-spec
+
+      - name: Generate code
+        run: make gen
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet '*.go'; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6 # TODO
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update OpenAPI spec"
+          branch: update-spec-${{ github.run_number }}
+          title: "chore(deps): update OpenAPI spec"
+          body: |
+            ## Summary
+
+            - Updated swagger.json from Rootly S3 bucket
+            - Regenerated Go types and client code
+
+            ## Test plan
+
+            - [ ] Review generated code changes
+            - [ ] Run `make build` to verify compilation
+            - [ ] Run `make test` to verify tests pass
