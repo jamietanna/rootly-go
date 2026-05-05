@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/v2.7.0/configuration-schema.json
+package: rootly
+output: spec.gen.go
+generate:
+  embedded-spec: true
+# NOTE that output-options should stay in sync with config.yaml
+output-options:
+  # make sure that we generate /all/ types, regardless of whether they're used by our API Client or not
+  skip-prune: true
+  nullable-type: true
+  overlay:
+    path: overlay.yaml
+  prefer-skip-optional-pointer-on-container-types: true
+  name-normalizer: ToCamelCaseWithInitialisms
+  additional-initialisms:
+    - IDs
