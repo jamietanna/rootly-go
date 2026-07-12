@@ -51,7 +51,18 @@ jobs:
                 echo "OPENAPI_HAS_CHANGES=false" >> "$GITHUB_ENV"
               else
                 CHANGE_COUNT=$(echo "$CHANGELOG" | grep -c '^- ' || echo 0)
-                SUMMARY="${CHANGE_COUNT} API change(s) — see attached \`openapi-diff.md\` for the full changelog"
+                BREAKING_OUTPUT=$(oasdiff breaking --format text /tmp/base-overlay-applied.json /tmp/pr-overlay-applied.json 2>/dev/null || true)
+                BREAKING_COUNT=$(echo "$BREAKING_OUTPUT" | grep -c '^error' || echo 0)
+                WARNING_COUNT=$(echo "$BREAKING_OUTPUT" | grep -c '^warning' || echo 0)
+                SUMMARY="${CHANGE_COUNT} API change(s)"
+                if [ "$BREAKING_COUNT" -gt 0 ] && [ "$WARNING_COUNT" -gt 0 ]; then
+                  SUMMARY="${SUMMARY} (${BREAKING_COUNT} breaking, ${WARNING_COUNT} potentially breaking)"
+                elif [ "$BREAKING_COUNT" -gt 0 ]; then
+                  SUMMARY="${SUMMARY} (${BREAKING_COUNT} breaking)"
+                elif [ "$WARNING_COUNT" -gt 0 ]; then
+                  SUMMARY="${SUMMARY} (${WARNING_COUNT} potentially breaking)"
+                fi
+                SUMMARY="${SUMMARY} — see attached \`openapi-diff.md\` for the full changelog"
                 echo "OPENAPI_HAS_CHANGES=true" >> "$GITHUB_ENV"
               fi
             else
