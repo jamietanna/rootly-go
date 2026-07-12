@@ -55,17 +55,36 @@ jobs:
           else
             CHANGELOG="_No previous release tag found._"
           fi
-          {
-            echo "OPENAPI_DIFF<<EOF"
-            echo "$CHANGELOG"
-            echo "EOF"
-          } >> "$GITHUB_ENV"
+          echo "$CHANGELOG" > /tmp/openapi-diff.md
 
-      - uses: release-drafter/release-drafter@4d75298e00d9e34c483e5ff8c68d0ea1c1940c1e # v7.5.1
+      - id: release_drafter
+        uses: release-drafter/release-drafter@4d75298e00d9e34c483e5ff8c68d0ea1c1940c1e # v7.5.1
         with:
           name: next
           tag: next
           version: next
-          footer: ${{ env.OPENAPI_DIFF }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inject OpenAPI diff into release body
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const diff = fs.readFileSync('/tmp/openapi-diff.md', 'utf8').trim();
+            const releaseId = ${{ steps.release_drafter.outputs.id }};
+
+            const { data: release } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+            });
+
+            const newBody = release.body.replace('<!-- OPENAPI_DIFF -->', diff);
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              body: newBody,
+            });

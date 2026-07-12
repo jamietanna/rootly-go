@@ -30,7 +30,7 @@ template: |
 
   <summary>OpenAPI diff</summary>
 
-  $FOOTER
+  <!-- OPENAPI_DIFF -->
 
   </details>
 
