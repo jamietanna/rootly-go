@@ -47,17 +47,23 @@ jobs:
               openapi overlay apply overlay.yaml .vendored/rootly-api/swagger.json > /tmp/pr-overlay-applied.json
               CHANGELOG=$(oasdiff changelog --format markdown /tmp/base-overlay-applied.json /tmp/pr-overlay-applied.json || true)
               if [ -z "$CHANGELOG" ] || echo "$CHANGELOG" | grep -q "No changes detected"; then
-                CHANGELOG="_No API changes detected._"
+                SUMMARY="_No API changes detected._"
+                echo "OPENAPI_HAS_CHANGES=false" >> "$GITHUB_ENV"
+              else
+                CHANGE_COUNT=$(echo "$CHANGELOG" | grep -c '^- ' || echo 0)
+                SUMMARY="${CHANGE_COUNT} API change(s) — see attached \`openapi-diff.md\` for the full changelog"
+                echo "OPENAPI_HAS_CHANGES=true" >> "$GITHUB_ENV"
               fi
             else
-              CHANGELOG="_No previous spec found for tag \`${LATEST_TAG}\`._"
+              SUMMARY="_No previous spec found for tag \`${LATEST_TAG}\`._"
+              echo "OPENAPI_HAS_CHANGES=false" >> "$GITHUB_ENV"
             fi
           else
-            CHANGELOG="_No previous release tag found._"
+            SUMMARY="_No previous release tag found._"
+            echo "OPENAPI_HAS_CHANGES=false" >> "$GITHUB_ENV"
           fi
-          echo "$CHANGELOG" > /tmp/openapi-diff.md
-
-      - run: cat /tmp/openapi-diff.md
+          echo "$SUMMARY" > /tmp/openapi-summary.txt
+          echo "${CHANGELOG:-}" > /tmp/openapi-diff.md
 
       - id: release_drafter
         uses: release-drafter/release-drafter@4d75298e00d9e34c483e5ff8c68d0ea1c1940c1e # v7.5.1
@@ -73,8 +79,38 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const diff = fs.readFileSync('/tmp/openapi-diff.md', 'utf8').trim();
             const releaseId = ${{ steps.release_drafter.outputs.id }};
+            const hasChanges = '${{ env.OPENAPI_HAS_CHANGES }}' === 'true';
+            const summary = fs.readFileSync('/tmp/openapi-summary.txt', 'utf8').trim();
+
+            let inlineContent = summary;
+
+            if (hasChanges) {
+              const { data: assets } = await github.rest.repos.listReleaseAssets({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: releaseId,
+              });
+              const existing = assets.find(a => a.name === 'openapi-diff.md');
+              if (existing) {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: existing.id,
+                });
+              }
+
+              const diff = fs.readFileSync('/tmp/openapi-diff.md', 'utf8');
+              const { data: asset } = await github.rest.repos.uploadReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: releaseId,
+                name: 'openapi-diff.md',
+                data: diff,
+              });
+
+              inlineContent = `${summary}\n\n[Full OpenAPI diff](${asset.browser_download_url})`;
+            }
 
             const { data: release } = await github.rest.repos.getRelease({
               owner: context.repo.owner,
@@ -82,7 +118,7 @@ jobs:
               release_id: releaseId,
             });
 
-            const newBody = release.body.replace('<!-- OPENAPI_DIFF -->', diff);
+            const newBody = release.body.replace('<!-- OPENAPI_DIFF -->', inlineContent);
 
             await github.rest.repos.updateRelease({
               owner: context.repo.owner,
