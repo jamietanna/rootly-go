@@ -30,7 +30,7 @@ template: |
 
   <summary>OpenAPI diff</summary>
 
-  # TODO fill in with `/tmp/rootly-go-diff.md`
+  $FOOTER
 
   </details>
 
