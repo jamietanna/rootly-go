@@ -63,6 +63,13 @@ jobs:
                   SUMMARY="${SUMMARY} (${WARNING_COUNT} potentially breaking)"
                 fi
                 SUMMARY="${SUMMARY} — see attached \`openapi-diff.md\` for the full changelog"
+                if [ "$BREAKING_COUNT" -gt 0 ]; then
+                  BREAKING_LIST=$(echo "$BREAKING_OUTPUT" | grep '^error' | sed 's/^error[[:space:]]*/- /')
+                  SUMMARY="${SUMMARY}
+
+**Breaking changes:**
+${BREAKING_LIST}"
+                fi
                 echo "OPENAPI_HAS_CHANGES=true" >> "$GITHUB_ENV"
               fi
             else
