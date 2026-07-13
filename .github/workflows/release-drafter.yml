@@ -64,7 +64,9 @@ jobs:
                 fi
                 SUMMARY="${SUMMARY} — see attached \`openapi-diff.md\` for the full changelog"
                 if [ "$BREAKING_COUNT" -gt 0 ]; then
-                  SUMMARY=$(printf '%s\n\n**Breaking changes:**\n%s' "$SUMMARY" "$(oasdiff breaking --format markdown /tmp/base-overlay-applied.json /tmp/pr-overlay-applied.json 2>/dev/null || true)")
+                # TODO quote everywhere
+                  BREAKING_OUTPUT=$(oasdiff breaking --format markdown /tmp/base-overlay-applied.json /tmp/pr-overlay-applied.json)
+                  SUMMARY=$(printf '%s\n\n**Breaking changes:**\n%s' "$SUMMARY" "$BREAKING_OUTPUT")
                 fi
                 echo "OPENAPI_HAS_CHANGES=true" >> "$GITHUB_ENV"
               fi
