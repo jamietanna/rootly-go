@@ -65,7 +65,7 @@ jobs:
                 SUMMARY="This release includes ${COUNTS}. The full changelog [can be found attached to this release](<!-- ASSET_URL -->)."
                 if [ "$BREAKING_COUNT" -gt 0 ] || [ "$WARNING_COUNT" -gt 0 ]; then
                   BREAKING_MD=$(oasdiff breaking --format markdown /tmp/base-overlay-applied.json /tmp/pr-overlay-applied.json 2>/dev/null || true)
-                  SUMMARY=$(printf '%s\n\nBreaking and potentially breaking changes can be seen below:\n\n%s' "$SUMMARY" "$BREAKING_MD")
+                  SUMMARY=$(printf '%s\n\n<details>\n<summary>Breaking and potentially breaking changes</summary>\n\n%s\n\n</details>' "$SUMMARY" "$BREAKING_MD")
                 fi
                 echo "OPENAPI_HAS_CHANGES=true" >> "$GITHUB_ENV"
               fi
