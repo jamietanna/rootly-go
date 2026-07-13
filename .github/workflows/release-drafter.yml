@@ -133,7 +133,13 @@ jobs:
               release_id: releaseId,
             });
 
-            const newBody = release.body.replace('<!-- OPENAPI_DIFF -->', inlineContent);
+            // GitHub's release body limit is 125,000 characters
+            const GITHUB_BODY_LIMIT = 125000;
+            let newBody = release.body.replace('<!-- OPENAPI_DIFF -->', inlineContent);
+            if (newBody.length > GITHUB_BODY_LIMIT) {
+              const fallback = inlineContent.replace(/<details>[\s\S]*<\/details>/, '_Breaking and potentially breaking changes omitted — see attached `openapi-diff.md` for details._');
+              newBody = release.body.replace('<!-- OPENAPI_DIFF -->', fallback);
+            }
 
             await github.rest.repos.updateRelease({
               owner: context.repo.owner,
