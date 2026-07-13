@@ -54,19 +54,18 @@ jobs:
                 BREAKING_OUTPUT=$(oasdiff breaking --format text /tmp/base-overlay-applied.json /tmp/pr-overlay-applied.json 2>/dev/null || true)
                 BREAKING_COUNT=$(echo "$BREAKING_OUTPUT" | grep -c '^error' || echo 0)
                 WARNING_COUNT=$(echo "$BREAKING_OUTPUT" | grep -c '^warning' || echo 0)
-                SUMMARY="${CHANGE_COUNT} API change(s)"
+                COUNTS="${CHANGE_COUNT} API change(s)"
                 if [ "$BREAKING_COUNT" -gt 0 ] && [ "$WARNING_COUNT" -gt 0 ]; then
-                  SUMMARY="${SUMMARY} (${BREAKING_COUNT} breaking, ${WARNING_COUNT} potentially breaking)"
+                  COUNTS="${COUNTS} (${BREAKING_COUNT} breaking, ${WARNING_COUNT} potentially breaking)"
                 elif [ "$BREAKING_COUNT" -gt 0 ]; then
-                  SUMMARY="${SUMMARY} (${BREAKING_COUNT} breaking)"
+                  COUNTS="${COUNTS} (${BREAKING_COUNT} breaking)"
                 elif [ "$WARNING_COUNT" -gt 0 ]; then
-                  SUMMARY="${SUMMARY} (${WARNING_COUNT} potentially breaking)"
+                  COUNTS="${COUNTS} (${WARNING_COUNT} potentially breaking)"
                 fi
-                SUMMARY="${SUMMARY} — see attached \`openapi-diff.md\` for the full changelog"
-                if [ "$BREAKING_COUNT" -gt 0 ]; then
-                # TODO quote everywhere
-                  BREAKING_OUTPUT=$(oasdiff breaking --format markdown /tmp/base-overlay-applied.json /tmp/pr-overlay-applied.json)
-                  SUMMARY=$(printf '%s\n\n**Breaking changes:**\n%s' "$SUMMARY" "$BREAKING_OUTPUT")
+                SUMMARY="This release includes ${COUNTS}. The full changelog [can be found attached to this release](<!-- ASSET_URL -->)."
+                if [ "$BREAKING_COUNT" -gt 0 ] || [ "$WARNING_COUNT" -gt 0 ]; then
+                  BREAKING_MD=$(oasdiff breaking --format markdown /tmp/base-overlay-applied.json /tmp/pr-overlay-applied.json 2>/dev/null || true)
+                  SUMMARY=$(printf '%s\n\nBreaking and potentially breaking changes can be seen below:\n\n%s' "$SUMMARY" "$BREAKING_MD")
                 fi
                 echo "OPENAPI_HAS_CHANGES=true" >> "$GITHUB_ENV"
               fi
@@ -125,7 +124,7 @@ jobs:
                 data: diff,
               });
 
-              inlineContent = `${summary}\n\n[Full OpenAPI diff](${asset.browser_download_url})`;
+              inlineContent = summary.replace('<!-- ASSET_URL -->', asset.browser_download_url);
             }
 
             const { data: release } = await github.rest.repos.getRelease({
